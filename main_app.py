@@ -139,7 +139,8 @@ with tab5:
     
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Imagen cargada", use_column_width=True)
+        # CORRECCIÓN: use_container_width en lugar de use_column_width
+        st.image(image, caption="Imagen cargada", use_container_width=True)
         
         with st.spinner("Extrayendo texto de la imagen..."):
             try:
