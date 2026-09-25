@@ -108,12 +108,12 @@ with tab3:
 # --- TAB 4: Generación Groq ---
 with tab4:
     st.header("Generación de Texto (API Groq)")
-    st.markdown("Configura los parámetros y utiliza los modelos disponibles en Groq. *Nota: La API de Groq no aloja los modelos GPT (de OpenAI), pero ofrece modelos ultrarrápidos como Mixtral y Gemma. Aquí hemos excluido LLaMA según tus instrucciones.*")
+    st.markdown("Configura los parámetros y utiliza los modelos disponibles en Groq. *Nota: Hemos excluido LLaMA y los modelos deprecados.*")
     
-    # Catálogo de modelos NO LLAMA en Groq
+    # Catálogo actualizado de modelos NO LLAMA en Groq
     model_choice = st.selectbox(
         "Catálogo de Modelos (Sin LLaMA)", 
-        ["mixtral-8x7b-32768", "gemma2-9b-it", "gemma-7b-it"]
+        ["gemma2-9b-it", "gemma-7b-it"]
     )
     
     col_param1, col_param2 = st.columns(2)
