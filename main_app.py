@@ -22,7 +22,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Tokenización", "Bag of Words", "Similitud Co
 # --- TAB 1: Tokenización ---
 with tab1:
     st.header("Tokenización (Estilo GPT)")
-    st.markdown("Explora cómo se divide el texto. Usamos la librería `tiktoken` que contiene los esquemas de tokenización de los modelos GPT de OpenAI.")
+    st.markdown("Explora cómo se divide el texto usando `tiktoken`.")
     
     text_input = st.text_area("Texto a tokenizar:", "El procesamiento de lenguaje natural es fascinante.")
     encoding_name = st.selectbox(
@@ -49,9 +49,7 @@ with tab1:
             color = colors[i % len(colors)]
             display_str = token_str.replace(" ", "␣").replace("\n", "↵")
             
-            # HTML para el token coloreado
             html_content += f"<div style='background-color: {color}; padding: 4px 8px; border-radius: 6px; margin: 4px; color: black; border: 1px solid #ddd;'><b>{display_str}</b> <span style='font-size: 12px; color: #555;'>({token_id})</span></div>"
-            
             token_data.append({"Token (Texto)": display_str, "Token ID": token_id})
             
         html_content += "</div>"
@@ -63,10 +61,8 @@ with tab1:
 # --- TAB 2: Bag of Words ---
 with tab2:
     st.header("Bag of Words (BoW)")
-    st.markdown("Ingresa varias frases (una por línea) para generar la matriz de recuento de palabras.")
-    
     bow_input = st.text_area(
-        "Frases para el Corpus:", 
+        "Frases para el Corpus (una por línea):", 
         "Me gusta la inteligencia artificial\nLa inteligencia artificial es el futuro\nMe gusta aprender cosas nuevas"
     )
     
@@ -75,7 +71,6 @@ with tab2:
         if corpus:
             vectorizer = CountVectorizer()
             X = vectorizer.fit_transform(corpus)
-            
             bow_df = pd.DataFrame(
                 X.toarray(), 
                 columns=vectorizer.get_feature_names_out(), 
@@ -86,8 +81,6 @@ with tab2:
 # --- TAB 3: Similitud Coseno ---
 with tab3:
     st.header("Similitud de Coseno")
-    st.markdown("Mide qué tan similares son dos frases calculando el coseno del ángulo entre sus vectores (usando conteo de palabras).")
-    
     col1, col2 = st.columns(2)
     with col1:
         frase1 = st.text_area("Frase 1", "El gato come pescado felizmente")
@@ -100,36 +93,45 @@ with tab3:
             X_cos = vectorizer_cos.fit_transform([frase1, frase2])
             sim = cosine_similarity(X_cos[0], X_cos[1])[0][0]
             st.success(f"### Distancia de Coseno (Similitud): {sim:.4f}")
-            if sim == 0:
-                st.info("Un valor de 0.0000 significa que las frases no comparten ninguna palabra exacta.")
         except ValueError:
             st.error("Por favor ingresa texto válido en ambas frases.")
 
-# --- TAB 4: Generación Groq ---
+# --- TAB 4: Generación Groq (DINÁMICA) ---
 with tab4:
     st.header("Generación de Texto (API Groq)")
-    st.markdown("Configura los parámetros y utiliza los modelos disponibles en Groq. *Nota: Hemos excluido LLaMA y los modelos deprecados.*")
+    st.markdown("Dado que Groq actualiza constantemente su catálogo y retira modelos, ahora la aplicación **obtiene automáticamente los modelos activos** disponibles para tu API Key, filtrando los LLaMA.")
     
-    # Catálogo actualizado de modelos NO LLAMA en Groq
-    model_choice = st.selectbox(
-        "Catálogo de Modelos (Sin LLaMA)", 
-        ["gemma2-9b-it", "gemma-7b-it"]
-    )
-    
-    col_param1, col_param2 = st.columns(2)
-    with col_param1:
-        temperature = st.slider("Temperatura (Creatividad)", 0.0, 2.0, 0.7)
-    with col_param2:
-        max_tokens = st.slider("Max Tokens (Longitud máxima)", 100, 4096, 1024)
-        
-    prompt = st.text_area("Escribe tu Prompt", "Explica brevemente la diferencia entre Bag of Words y Similitud Coseno.")
-    
-    if st.button("Generar Respuesta 🚀"):
-        if not api_key:
-            st.error("❌ Por favor, ingresa tu API Key de Groq en la barra lateral.")
-        else:
-            try:
-                client = Groq(api_key=api_key)
+    if not api_key:
+        st.info("Ingresa tu API Key en la barra lateral para cargar los modelos activos de Groq.")
+    else:
+        try:
+            client = Groq(api_key=api_key)
+            
+            # Obtener lista de modelos directamente de la API
+            models_response = client.models.list()
+            
+            # Filtrar LLaMA y modelos de audio (whisper)
+            valid_models = [
+                m.id for m in models_response.data 
+                if "llama" not in m.id.lower() and "whisper" not in m.id.lower()
+            ]
+            
+            # Fallback por si la cuenta solo tiene LLaMA disponibles
+            if not valid_models:
+                st.warning("No se encontraron modelos distintos a LLaMA. Mostrando todos los disponibles.")
+                valid_models = [m.id for m in models_response.data if "whisper" not in m.id.lower()]
+
+            model_choice = st.selectbox("Modelos activos en tu cuenta (Sin LLaMA):", sorted(valid_models))
+            
+            col_param1, col_param2 = st.columns(2)
+            with col_param1:
+                temperature = st.slider("Temperatura (Creatividad)", 0.0, 2.0, 0.7)
+            with col_param2:
+                max_tokens = st.slider("Max Tokens (Longitud máxima)", 100, 4096, 1024)
+                
+            prompt = st.text_area("Escribe tu Prompt", "Explica brevemente la diferencia entre Bag of Words y Similitud Coseno.")
+            
+            if st.button("Generar Respuesta 🚀"):
                 with st.spinner(f"Generando respuesta usando {model_choice}..."):
                     chat_completion = client.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
@@ -138,5 +140,5 @@ with tab4:
                         max_tokens=max_tokens,
                     )
                     st.write(chat_completion.choices[0].message.content)
-            except Exception as e:
-                st.error(f"Error en la comunicación con Groq: {e}")
+        except Exception as e:
+            st.error(f"Error al conectar con Groq: {e}")
